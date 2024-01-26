@@ -1,6 +1,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <SDL2/SDL_mixer.h>
+#include <SDL2/SDL_image.h>
 #include <bits/stdc++.h>
 #undef main
 
@@ -11,15 +12,18 @@ int score=0;
 int timer=0;
 int bonusFoodTimer=0;
 bool pause;
-bool bonusFoodActive;
+bool bonusFoodActive=false;
 bool gameOver=false;
 bool quit=false;
-//bool checkCollision()=false;
 
 SDL_Window *window = nullptr;
 SDL_Renderer *renderer = nullptr;
+SDL_Texture* BGTexture = nullptr;
+//SDL_Texture* BGTexture = nullptr;
 Mix_Music* bgm;
 Mix_Chunk* eatSound;
+Mix_Chunk* tick = nullptr;
+
 
 class Snake {
 public:
@@ -29,8 +33,6 @@ public:
     void render(SDL_Renderer *renderer);
     bool checkCollision();
     void spawnFood();
-    void drawWall();
-    void renderGameOver();
 
 private:
     SDL_Rect food;
@@ -48,7 +50,7 @@ Snake::Snake() {
     body.push_back(body2);
     direction = 3; // Start moving to the right
     spawnFood();
-    bonusFoodActive = false;
+    bonusFoodActive=false;
 }
 
 void Snake::handleInput(SDL_Event &e) {
@@ -115,23 +117,23 @@ void Snake::move() {
 
     if (newHead.x == food.x && newHead.y == food.y) {
         score+=1;
-        Mix_PauseAudio(0);
         Mix_PlayChannel(-1,eatSound,0);
         spawnFood();
     }
-    else {
-        body.pop_back();
-    }
-
-    if (bonusFoodActive && newHead.x < bonusFood.x + bonusFood.w && newHead.x + newHead.w > bonusFood.x &&
+    else if (bonusFoodActive && newHead.x < bonusFood.x + bonusFood.w && newHead.x + newHead.w > bonusFood.x &&
         newHead.y < bonusFood.y + bonusFood.h && newHead.y + newHead.h > bonusFood.y) {
         score+=10;
         Mix_PlayChannel(-1,eatSound,0);
-        body.push_back(SDL_Rect{-20, -20, TILE_SIZE, TILE_SIZE});
+        Mix_HaltChannel(1);
+        //body.push_back(SDL_Rect{0, 0, TILE_SIZE, TILE_SIZE});
         bonusFoodActive = false;
+    } else {
+        body.pop_back();
     }
 
+
     if (bonusFoodActive && SDL_GetTicks() > bonusFoodTimer) {
+        Mix_HaltChannel(1);
         bonusFoodActive = false;
     }
 
@@ -139,7 +141,6 @@ void Snake::move() {
         std::cout << "Your Score is " << score << std::endl;
         std::cout << "Game Over!" << std::endl;
         gameOver =true;
-        //SDL_Quit();
     }
 }
 
@@ -151,10 +152,10 @@ void Snake::render(SDL_Renderer *renderer) {
         SDL_RenderFillRect(renderer, &body[i]);   
     }
 
-    SDL_SetRenderDrawColor(renderer, 255, 204,255, 255);
+    SDL_SetRenderDrawColor(renderer, 255, 128,0, 255);
     SDL_RenderFillRect(renderer, &body[0]);
 
-    SDL_SetRenderDrawColor(renderer, 255,204 , 229, 255);
+    SDL_SetRenderDrawColor(renderer, 255,128 ,0, 255);
     SDL_RenderFillRect(renderer, &food);
 
 
@@ -177,8 +178,8 @@ void Snake::render(SDL_Renderer *renderer) {
     SDL_RenderFillRect(renderer, &wall4);
     SDL_RenderFillRect(renderer, &wall5);
 
-    SDL_SetRenderDrawColor(renderer,200,0,0,255);
-    SDL_Rect wall6 = {0,58,SCREEN_WIDTH,TILE_SIZE/10};
+    SDL_SetRenderDrawColor(renderer,255,0,0,255);
+    SDL_Rect wall6 = {0,57,SCREEN_WIDTH,TILE_SIZE/6};
     SDL_RenderFillRect(renderer, &wall6);
     
 }
@@ -202,7 +203,7 @@ bool Snake::checkCollision() {
     SDL_Rect wall3 = {SCREEN_WIDTH/2-(TILE_SIZE*4), SCREEN_HEIGHT/2, TILE_SIZE*8, TILE_SIZE*2};
     SDL_Rect wall4 = {SCREEN_WIDTH/2+(TILE_SIZE*2), SCREEN_HEIGHT/2, TILE_SIZE*2, TILE_SIZE*8};
     SDL_Rect wall5 = {SCREEN_WIDTH/2-(TILE_SIZE*4),SCREEN_HEIGHT/2+(TILE_SIZE*8),TILE_SIZE*8,TILE_SIZE*2 };
-    SDL_Rect wall6 = {0,55,SCREEN_WIDTH,TILE_SIZE/4};
+    SDL_Rect wall6 = {0,58,SCREEN_WIDTH,TILE_SIZE/10};
 
     if ((head.x < wall1.x + wall1.w && head.x + head.w > wall1.x && head.y < wall1.y + wall1.h && head.y + head.h > wall1.y) ||
         (head.x < wall2.x + wall2.w && head.x + head.w > wall2.x && head.y < wall2.y + wall2.h && head.y + head.h > wall2.y) ||
@@ -222,10 +223,10 @@ void Snake::spawnFood() {
     SDL_Rect wall3 = {SCREEN_WIDTH/2-(TILE_SIZE*4), SCREEN_HEIGHT/2, TILE_SIZE*8, TILE_SIZE*2};
     SDL_Rect wall4 = {SCREEN_WIDTH/2+(TILE_SIZE*2), SCREEN_HEIGHT/2, TILE_SIZE*2, TILE_SIZE*8};
     SDL_Rect wall5 = {SCREEN_WIDTH/2-(TILE_SIZE*4),SCREEN_HEIGHT/2+(TILE_SIZE*8),TILE_SIZE*8,TILE_SIZE*2 };
-    SDL_Rect wall6 = {0,55,SCREEN_WIDTH,TILE_SIZE/4};
+    SDL_Rect wall6 = {0,58,SCREEN_WIDTH,TILE_SIZE/10};
     do {
         food.x = rand() % (SCREEN_WIDTH/ TILE_SIZE) * TILE_SIZE;
-        food.y = rand() % ((SCREEN_HEIGHT-TILE_SIZE*4)/TILE_SIZE) * TILE_SIZE;
+        food.y = rand() % ((SCREEN_HEIGHT-TILE_SIZE*3)/TILE_SIZE) * TILE_SIZE;
     } while ((food.x >= wall1.x && food.x < wall1.x + wall1.w && food.y >= wall1.y && food.y < wall1.y + wall1.h) ||
              (food.x >= wall2.x && food.x < wall2.x + wall2.w && food.y >= wall2.y && food.y < wall2.y + wall2.h) ||
              (food.x >= wall3.x && food.x < wall3.x + wall3.w && food.y >= wall3.y && food.y < wall3.y + wall3.h) ||
@@ -233,15 +234,16 @@ void Snake::spawnFood() {
              (food.x >= wall5.x && food.x < wall5.x + wall5.w && food.y >= wall5.y && food.y < wall5.y + wall5.h) ||
              (food.x >= 0 && food.x < SCREEN_WIDTH && food.y >= 0 && food.y < 60) ||
              std::any_of(body.begin(), body.end(), [this](const SDL_Rect &segment) {
-                 return food.x == segment.x && food.y == segment.y;
-             }));
+                return food.x == segment.x && food.y == segment.y;
+            }));
 
     food.w = TILE_SIZE;
     food.h = TILE_SIZE;
 
-    if (score % 7 == 0) {
+    if (score % 7 == 0 && score!=0) {
         bonusFoodActive = true;
         bonusFoodTimer = SDL_GetTicks() + 7000;
+        Mix_PlayChannel(1, tick, 0);
 
     do {
     bonusFood.x = rand() % (SCREEN_WIDTH / TILE_SIZE) * TILE_SIZE;
@@ -253,8 +255,8 @@ void Snake::spawnFood() {
      (bonusFood.x >= wall5.x && bonusFood.x < wall5.x + wall5.w && bonusFood.y >= wall5.y && bonusFood.y < wall5.y + wall5.h) ||
      (bonusFood.x >= 0 && bonusFood.x < SCREEN_WIDTH && bonusFood.y >= 0 && bonusFood.y < 60) ||
      std::any_of(body.begin(), body.end(), [this](const SDL_Rect &segment) {
-         return bonusFood.x == segment.x && bonusFood.y == segment.y;
-     }));
+         return food.x == segment.x && food.y == segment.y;
+         }));
 
     bonusFood.w=TILE_SIZE*2;
     bonusFood.h=TILE_SIZE*2;
@@ -276,81 +278,92 @@ void renderScore(SDL_Renderer* renderer, TTF_Font* font, int score) {
         
         SDL_FreeSurface(surface1);
     }
-}
 
-void displayGameOver(SDL_Renderer* renderer, TTF_Font* font, int finalScore) {
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderClear(renderer);
+    int timer = (int)(bonusFoodTimer-SDL_GetTicks())/1000;
+    std::string t = "Timer: " + std::to_string(timer);
+    SDL_Surface* surface2 = TTF_RenderText_Solid(font, t.c_str() , fontColor);
+    if (surface2) {
+        SDL_Texture* text2 = SDL_CreateTextureFromSurface(renderer, surface2);
 
-    SDL_Color Color = {102, 255, 102, 255};
-    std::string msg= "GAME OVER!";
-    SDL_Surface* surface = TTF_RenderText_Solid(font, msg.c_str(), Color);
-    SDL_Surface* surface3= TTF_RenderText_Solid(font,("Final Score: " + std::to_string(score)).c_str(), Color);
-    
-    if (surface) {
-        SDL_Texture* text = SDL_CreateTextureFromSurface(renderer, surface);
-        SDL_Texture* text3 = SDL_CreateTextureFromSurface(renderer, surface3);
-
-        if (text) {
-            SDL_Rect textRect = {300,200,400,200};
-
-            SDL_RenderCopy(renderer, text, nullptr, &textRect);
-
-            SDL_DestroyTexture(text);
-        }
-
-        if (text3) {
-            SDL_Rect textRect = {300,420,400,200};
-
-            SDL_RenderCopy(renderer, text3, nullptr, &textRect);
-
-            SDL_DestroyTexture(text3);
+        if (text2) {
+            SDL_Rect textRect2={875,5,200,50};
+            if (bonusFoodActive)
+                SDL_RenderCopy(renderer, text2, nullptr, &textRect2);
+            SDL_DestroyTexture(text2);
         }
         
-
-        SDL_FreeSurface(surface);
-        SDL_FreeSurface(surface);
+        SDL_FreeSurface(surface2);
     }
-
-    SDL_RenderPresent(renderer);
-    SDL_Delay(3000);
-    SDL_Quit();
 }
 
+void displayGameOver(SDL_Renderer* renderer, TTF_Font* font, int score) {
+
+    SDL_RenderClear(renderer);
+
+    SDL_Surface* BGSurface = IMG_Load("go.png");
+    BGTexture = SDL_CreateTextureFromSurface(renderer, BGSurface);
+    SDL_FreeSurface(BGSurface);
     
+    SDL_Color Color = {255, 55, 50, 255};
+    SDL_Color Color2 = {55, 50, 255, 255};
+    std::string msg = "GAME OVER!";
+    std::string scoreMsg = "Final Score: " + std::to_string(score);
+
+    SDL_Surface* surface = TTF_RenderText_Solid(font, msg.c_str(), Color);
+    SDL_Surface* scoreSurface = TTF_RenderText_Solid(font, scoreMsg.c_str(), Color2);
+    SDL_RenderCopy(renderer, BGTexture, nullptr, nullptr);
+
+    if (surface && scoreSurface) {
+        SDL_Texture* text = SDL_CreateTextureFromSurface(renderer, surface);
+        SDL_Texture* scoreText = SDL_CreateTextureFromSurface(renderer, scoreSurface);
+
+        if (text && scoreText) {
+            SDL_Rect textRect = {SCREEN_WIDTH/2-300, 200, 600,160 };
+            SDL_Rect scoreRect = {SCREEN_WIDTH/2-300, 400,600,160};
+
+            SDL_RenderCopy(renderer, text, nullptr, &textRect);
+            SDL_RenderCopy(renderer, scoreText, nullptr, &scoreRect);
+
+            SDL_DestroyTexture(text);
+            SDL_DestroyTexture(scoreText);
+        }
+
+        SDL_FreeSurface(surface);
+        SDL_FreeSurface(scoreSurface);
+    }
+    SDL_RenderPresent(renderer);
+    SDL_Delay(5000);
+
+}
+  
 
 int main(int argc, char *argv[]) {
     
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
     Mix_Init(MIX_INIT_MP3);
+    IMG_Init(IMG_INIT_JPG);
     
     Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
     bgm = Mix_LoadMUS("game2r.mp3");
+    Mix_VolumeMusic(20);
     Mix_PlayMusic(bgm, -1);
-
     eatSound = Mix_LoadWAV("hiss3.mp3");
-    if (!eatSound) {
-    std::cerr << "Failed to load eat sound: " << Mix_GetError() << std::endl;
-    Mix_Quit();
-    SDL_Quit();
-    return 1;
-}
+    tick = Mix_LoadWAV("clock.mp3");
+
     window = SDL_CreateWindow("Snake Game", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN);
     renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     
-    // Load font
-    TTF_Font* font = TTF_OpenFont("Lobster_1.3.otf", 50);
-    if (!font) {
-    std::cerr << "Failed to load font: " << TTF_GetError() << std::endl;
-    TTF_Quit();
-    return 1;
-}
+    TTF_Font* font = TTF_OpenFont("FFF_Tusj.ttf", 50);
+
+    SDL_Surface* BGSurface = IMG_Load("final.png");
+    BGTexture = SDL_CreateTextureFromSurface(renderer, BGSurface);
+    SDL_FreeSurface(BGSurface);
     
     Snake snake;
 
     SDL_Event e;
-     while (!quit) {
+    while (!quit) {
         while (SDL_PollEvent(&e) != 0) {
             if (e.type == SDL_QUIT) {
                 quit = true;
@@ -362,30 +375,32 @@ int main(int argc, char *argv[]) {
 
         SDL_SetRenderDrawColor(renderer, 0, 75, 0, 255);
         SDL_RenderClear(renderer);
+
+        SDL_RenderCopy(renderer, BGTexture, nullptr, nullptr);
         
         snake.render(renderer);
         renderScore(renderer, font, score);
+        if (gameOver) {
+            displayGameOver(renderer, font, score);
+            break;
+        }
 
         SDL_RenderPresent(renderer);
-
-        if(gameOver){
-            displayGameOver(renderer,font,score);
-            exit(0);
-        }
         if(bonusFoodActive)
             SDL_Delay(80);
         else
-        SDL_Delay(120);
-           
+            SDL_Delay(120);
     } 
+
+    IMG_Quit();
     Mix_FreeMusic(bgm);
     Mix_FreeChunk(eatSound);
     Mix_CloseAudio();
+    SDL_DestroyTexture(BGTexture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();
     TTF_Quit();
     Mix_Quit();
-
     return 0;
 }
